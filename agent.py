@@ -39,11 +39,15 @@ from game import Action, AgentConfig, HandResult, Observation, Street
 warmup()
 
 # rename as your team/bot's name
-PARTICIPANT = "TotallyAwesomeDatathonParticipant"
-AGENT_NAME = "JustAsAwesomeAgent"
+PARTICIPANT = "brown ballers"
+AGENT_NAME = "BrownBallers"
 
 
 # ===== YOUR CODE HERE =====
+
+from strategy.opponent import init_memory, note_our_action, observe_actions, observe_showdown
+from strategy.policy import choose, fallback
+
 
 def new_half(config: AgentConfig, memory: dict) -> None:
     """Called at the start of each half-match (1000 hands).
@@ -55,7 +59,11 @@ def new_half(config: AgentConfig, memory: dict) -> None:
     In the tournament, each half runs in a brand-new copy of your server,
     so nothing you learn in one half carries over to the other half.
     """
-    memory["hands_played"] = 0
+    try:
+        init_memory(memory)
+    except Exception:
+        memory.clear()
+        memory["hands_played"] = 0
 
 
 def choose_action(obs: Observation, memory: dict) -> Action:
@@ -86,11 +94,18 @@ def choose_action(obs: Observation, memory: dict) -> Action:
     scores your hand (higher is better).
     """
 
-    # Simple example of a heuristic bot, which just checks when it is of no cost, otherwise folds
-    # Replace this with your strategy!
-    if obs.to_call == 0:
-        return Action.CHECK_CALL
-    return Action.FOLD
+    try:
+        if memory.get("hand_index") != obs.hand_index:
+            memory["hole"] = tuple(obs.hole_cards)
+            memory["hand_index"] = obs.hand_index
+        observe_actions(obs, memory)
+        action = choose(obs, memory)
+        if action not in obs.legal_actions:
+            action = fallback(obs)
+        note_our_action(obs, action, memory)
+        return action
+    except Exception:
+        return fallback(obs)
 
 
 def on_hand_end(result: HandResult, memory: dict) -> None:
@@ -104,7 +119,11 @@ def on_hand_end(result: HandResult, memory: dict) -> None:
     went_to_showdown, board (cards revealed), opp_hole (opponent's cards,
     only after a showdown, else None), winner ('me', 'opp' or 'split').
     """
-    memory["hands_played"] += 1
+    try:
+        observe_showdown(result, memory)
+        memory["hands_played"] = int(memory.get("hands_played") or 0) + 1
+    except Exception:
+        return
 
 # ===== END OF YOUR CODE =====
 

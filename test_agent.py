@@ -195,3 +195,41 @@ def test_reads_port_from_environment():
 # ---------------------------------------------------------------------------
 # Add your own tests below, e.g. "with two aces preflop my bot raises".
 # ---------------------------------------------------------------------------
+
+def test_fallback_is_always_legal():
+    from strategy.policy import fallback
+
+    for hand in range(15):
+        game = Game(make_deal("fallback", hand), button_seat=hand % 2, hand_index=hand)
+        while not game.is_terminal:
+            obs = game.observation(game.to_act)
+            action = fallback(obs)
+            assert action in obs.legal_actions
+            game.apply(action)
+
+
+def test_on_hand_end_accepts_a_fold_and_a_short_board(bot):
+    from game import HandResult
+
+    module, _ = bot
+    memory = {}
+    module.new_half(AgentConfig(), memory)
+    module.on_hand_end(HandResult(0, 3, 3, False, (), None, "me"), memory)
+    module.on_hand_end(HandResult(1, -2, 10, True, (0, 1, 2), None, "opp"), memory)
+    assert memory["hands_played"] == 2
+
+
+def test_preflop_index_matches_combinations_order():
+    import os
+    from itertools import combinations
+
+    from strategy import equity
+
+    hands = list(combinations(range(36), 5))
+    equity._load()
+    assert equity._INDEX[hands[0]] == 0
+    assert equity._INDEX[hands[-1]] == len(hands) - 1
+    sample = equity.preflop_equity(hands[len(hands) // 2])
+    assert 0.0 <= sample <= 1.0
+    if not os.path.isfile(equity.TABLE_PATH):
+        assert sample == 0.5
