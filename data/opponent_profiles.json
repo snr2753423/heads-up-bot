@@ -1,0 +1,131 @@
+{
+  "note": "Public snapshots plus the official practice bots. A repository HEAD is not a confirmed tournament submission.",
+  "profiles": [
+    {
+      "id": "starter_checkfold",
+      "usable_for_match": true,
+      "signature": {"fold_rate": 0.9, "raise_rate": 0.02, "pot_share": 0.0},
+      "counter": {"bet_delta": -0.1, "call_delta": 0.0, "value_delta": 0.0, "station": false},
+      "why": "They check when it is free and fold when it costs chips, so betting into them wins the pot often.",
+      "label": "Public repos still on the starter check/fold action",
+      "sources": [
+        {
+          "full_name": "ArmaanMediratta/heads-up-bundle",
+          "sha": "d1a981361bd7",
+          "commit_known_submission": false,
+          "snapshot_warning": "Public HEAD on 2026-11-07, message 'fixed paths'. choose_action is still check/fold. Not a confirmed submission.",
+          "facts": ["choose_action returns only CHECK_CALL and FOLD."]
+        },
+        {
+          "full_name": "KrishitaM/ReachForTheMoon--HeadsUp",
+          "sha": "c83ab6eeb766",
+          "commit_known_submission": false,
+          "snapshot_warning": "Fork still on the starter commit 'good luck'. Not a confirmed submission.",
+          "facts": ["choose_action returns only CHECK_CALL and FOLD."]
+        },
+        {
+          "full_name": "Abraham001l/heads-up-bundle",
+          "sha": "c83ab6eeb766",
+          "commit_known_submission": false,
+          "snapshot_warning": "Fork still on the starter commit. Not a confirmed submission.",
+          "facts": ["choose_action returns only CHECK_CALL and FOLD."]
+        },
+        {
+          "full_name": "Juan-Sett/HeadsUpBot",
+          "sha": "c83ab6eeb766",
+          "commit_known_submission": false,
+          "snapshot_warning": "Fork still on the starter commit. Not a confirmed submission.",
+          "facts": ["choose_action returns only CHECK_CALL and FOLD."]
+        },
+        {
+          "full_name": "jait-mukkamalla/tamu-datathon-poker-bot-challenge",
+          "sha": "c83ab6eeb766",
+          "commit_known_submission": false,
+          "snapshot_warning": "Fork still on the starter commit. Not a confirmed submission.",
+          "facts": ["choose_action returns only CHECK_CALL and FOLD."]
+        },
+        {
+          "full_name": "itsoporo/datathon-poker-f26-winner",
+          "sha": "c83ab6eeb766",
+          "commit_known_submission": false,
+          "snapshot_warning": "Fork still on the starter commit. Not a confirmed submission.",
+          "facts": ["choose_action returns only CHECK_CALL and FOLD."]
+        }
+      ]
+    },
+    {
+      "id": "calling_station",
+      "usable_for_match": true,
+      "signature": {"fold_rate": 0.02, "raise_rate": 0.02, "pot_share": 0.0},
+      "counter": {"bet_delta": 0.06, "call_delta": -0.02, "value_delta": -0.05, "station": true},
+      "why": "They never fold and never raise, so bluffs lose and thin value bets get paid.",
+      "label": "Official practice bot: baseline_calling_station",
+      "sources": [
+        {
+          "full_name": "local baseline-bots/baseline_calling_station.py",
+          "commit_known_submission": false,
+          "facts": ["choose_action always returns CHECK_CALL."]
+        }
+      ]
+    },
+    {
+      "id": "always_half",
+      "usable_for_match": true,
+      "signature": {"fold_rate": 0.02, "raise_rate": 0.85, "pot_share": 0.05},
+      "counter": {"bet_delta": 0.0, "call_delta": 0.0, "value_delta": 0.0, "station": false},
+      "why": "They raise half the pot with any cards. Showdown quality, not the raise itself, decides whether a call tightens or loosens.",
+      "label": "Official practice bot: baseline_always_half",
+      "sources": [
+        {
+          "full_name": "local baseline-bots/baseline_always_half.py",
+          "commit_known_submission": false,
+          "facts": ["choose_action returns RAISE_HALF when legal, otherwise CHECK_CALL."]
+        }
+      ]
+    },
+    {
+      "id": "always_pot",
+      "usable_for_match": true,
+      "signature": {"fold_rate": 0.02, "raise_rate": 0.85, "pot_share": 0.95},
+      "counter": {"bet_delta": 0.0, "call_delta": 0.0, "value_delta": 0.0, "station": false},
+      "why": "They pot it with any cards. The live showdown read decides the call, because a stored tighten would fold hands that beat their air.",
+      "label": "Official practice bot: baseline_always_pot",
+      "sources": [
+        {
+          "full_name": "local baseline-bots/baseline_always_pot.py",
+          "commit_known_submission": false,
+          "facts": ["choose_action returns RAISE_POT when legal, otherwise CHECK_CALL."]
+        }
+      ]
+    },
+    {
+      "id": "ssd_equity_snapshot",
+      "usable_for_match": false,
+      "signature": {"fold_rate": 0.42, "raise_rate": 0.3, "pot_share": 0.55},
+      "counter": {"bet_delta": -0.03, "call_delta": 0.03, "value_delta": 0.0, "station": false},
+      "why": "Stored for reference only. The published parameters value-bet and rarely bluff, but this HEAD is not a confirmed submission, so the bot does not auto-match it.",
+      "label": "Dhanush006/ssd-heads-up-poker public snapshot",
+      "sources": [
+        {
+          "full_name": "Dhanush006/ssd-heads-up-poker",
+          "html_url": "https://github.com/Dhanush006/ssd-heads-up-poker",
+          "sha": "c94d9f42515b",
+          "commit_date": "2026-11-07T18:20:59Z",
+          "commit_message": "Update experiment log status",
+          "commit_known_submission": false,
+          "snapshot_warning": "Public HEAD. Not a confirmed tournament SHA. Team name in the file is SSD / ShortStackSage.",
+          "facts": [
+            "strategy.py DEFAULT_PARAMS raise_eq is [0.56, 0.64, 0.68, 0.72].",
+            "bet_half is [0.50, 0.51, 0.52, 0.54] and bet_pot is [0.55, 0.60, 0.63, 0.66].",
+            "call_margin is [0.0, 0.03, 0.03, 0.02].",
+            "bluff_freq is 0.1, steal_freq is 0.0, reraise_bluff is 0.0.",
+            "Monte Carlo sample cap in agent.py is 700, with a soft think budget of 3.5 seconds."
+          ],
+          "inferences": [
+            "They fold to a price and rarely bluff, so a slightly tighter call against their raises and a slightly wider bet when checked to is the counter. That stays off until their behavior is measured in a match."
+          ]
+        }
+      ]
+    }
+  ]
+}

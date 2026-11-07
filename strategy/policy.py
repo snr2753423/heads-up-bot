@@ -5,6 +5,7 @@ from __future__ import annotations
 from game import Action, Observation, Street
 
 from strategy.equity import postflop_equity, preflop_equity
+from strategy.identify import library_adjustments
 from strategy.opponent import adjustments
 
 # Every tuned number lives here. Match logs are the reason to change one.
@@ -32,6 +33,20 @@ def fallback(obs: Observation) -> Action:
 
 def _clamp(value: float) -> float:
     return max(0.30, min(0.90, value))
+
+
+def _blend(live: float, extra: float, weight: float) -> float:
+    """Keep the live shift when it already covers the library, or points the other way.
+
+    The library only fills an axis the live model has left at zero, or replaces
+    a smaller shift that points the same way. It does not stack on top.
+    """
+    nudge = weight * extra
+    if nudge == 0.0 or live == 0.0:
+        return live + nudge
+    if (live > 0) == (nudge > 0):
+        return live if abs(live) >= abs(nudge) else nudge
+    return live
 
 
 def equity_of(obs: Observation, memory: dict) -> float:
@@ -66,9 +81,19 @@ def _raise(obs: Observation, equity: float, pot_at: float, half_at: float) -> Ac
 def choose(obs: Observation, memory: dict) -> Action:
     equity = equity_of(obs, memory)
     shift = adjustments(memory, obs.to_call, obs.is_button)
-    bet_delta = shift["bet_delta"]
-    call_delta = shift["call_delta"]
-    value_delta = shift["value_delta"]
+    try:
+        library = library_adjustments(memory)
+    except Exception:
+        library = {"weight": 0.0, "bet_delta": 0.0, "call_delta": 0.0, "value_delta": 0.0, "station": False}
+    weight = library["weight"]
+    bet_delta = _blend(shift["bet_delta"], library["bet_delta"], weight)
+    call_delta = _blend(shift["call_delta"], library["call_delta"], weight)
+    value_delta = _blend(shift["value_delta"], library["value_delta"], weight)
+    # A confirmed check-folder folds to a bet. Widen past the generic fold exploit, with a cap.
+    if library.get("profile_id") == "starter_checkfold" and shift["bet_delta"] < 0:
+        bet_delta = max(-0.20, shift["bet_delta"] + weight * library["bet_delta"])
+    if weight >= 0.5 and library["station"] and not shift["station"]:
+        shift = {**shift, "station": True}
     postflop = obs.street != Street.PREFLOP
     position = THRESHOLDS["button_bet_discount"] if obs.is_button and postflop else 0.0
 

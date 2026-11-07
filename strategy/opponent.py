@@ -58,9 +58,14 @@ def observe_actions(obs: Observation, memory: dict) -> None:
         if action.action == Action.FOLD:
             _bump(stats, "fold")
             _bump(stats, "non_raise")
-        elif action.action in (Action.RAISE_HALF, Action.RAISE_POT):
+        elif action.action == Action.RAISE_POT:
             _bump(stats, "raise")
             _bump(stats, "continue")
+            _bump(stats, "pot")
+        elif action.action == Action.RAISE_HALF:
+            _bump(stats, "raise")
+            _bump(stats, "continue")
+            _bump(stats, "half")
         elif action.action == Action.CHECK_CALL and action.amount > 0:
             _bump(stats, "call")
             _bump(stats, "continue")
