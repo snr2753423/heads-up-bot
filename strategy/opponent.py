@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from evaluator import STRAIGHT, TWO_PAIR, category_of, omaha_score
+from evaluator import FULL_HOUSE, STRAIGHT, TWO_PAIR, category_of, omaha_score
 from game import Action, HandResult, Observation, Street
 
 # Pseudocounts. They do not count toward the "enough real hands" gates.
@@ -32,7 +32,16 @@ def init_memory(memory: dict) -> None:
     memory["show_weak"] = 0
     memory["show_strong"] = 0
     memory["show_n"] = 0
+    memory["bet_show_n"] = 0
+    memory["bet_show_weak"] = 0
+    memory["bet_show_strong"] = 0
+    memory["call_show_n"] = 0
+    memory["call_show_weak"] = 0
+    memory["call_show_strong"] = 0
+    memory["opp_bets"] = 0
     memory["eq_cache"] = None
+    memory["spent"] = 0.0
+    memory["bank"] = 8.0
 
 
 def _bucket(street: Street) -> str:
@@ -48,6 +57,7 @@ def observe_actions(obs: Observation, memory: dict) -> None:
     if memory.get("cursor_hand") != obs.hand_index:
         memory["cursor_hand"] = obs.hand_index
         memory["cursor"] = 0
+        memory["opp_bets"] = 0
     start = int(memory.get("cursor") or 0)
     history = obs.action_history
     opp = memory.setdefault("opp", {"pre": {}, "post": {}})
@@ -62,10 +72,12 @@ def observe_actions(obs: Observation, memory: dict) -> None:
             _bump(stats, "raise")
             _bump(stats, "continue")
             _bump(stats, "pot")
+            memory["opp_bets"] = int(memory.get("opp_bets") or 0) + 1
         elif action.action == Action.RAISE_HALF:
             _bump(stats, "raise")
             _bump(stats, "continue")
             _bump(stats, "half")
+            memory["opp_bets"] = int(memory.get("opp_bets") or 0) + 1
         elif action.action == Action.CHECK_CALL and action.amount > 0:
             _bump(stats, "call")
             _bump(stats, "continue")
@@ -106,6 +118,18 @@ def observe_showdown(result: HandResult, memory: dict) -> None:
         memory["show_strong"] = int(memory.get("show_strong") or 0) + 1
     elif cat <= TWO_PAIR or (result.winner == "me" and result.pot >= 20):
         memory["show_weak"] = int(memory.get("show_weak") or 0) + 1
+    if int(memory.get("opp_bets") or 0) > 0:
+        memory["bet_show_n"] = int(memory.get("bet_show_n") or 0) + 1
+        if cat >= FULL_HOUSE or (cat >= STRAIGHT and result.winner == "opp"):
+            memory["bet_show_strong"] = int(memory.get("bet_show_strong") or 0) + 1
+        elif cat <= TWO_PAIR:
+            memory["bet_show_weak"] = int(memory.get("bet_show_weak") or 0) + 1
+    if memory.get("we_bet"):
+        memory["call_show_n"] = int(memory.get("call_show_n") or 0) + 1
+        if cat <= TWO_PAIR:
+            memory["call_show_weak"] = int(memory.get("call_show_weak") or 0) + 1
+        if cat >= FULL_HOUSE or (cat >= STRAIGHT and result.winner == "opp"):
+            memory["call_show_strong"] = int(memory.get("call_show_strong") or 0) + 1
 
 
 def _rate(numer: float, denom: float) -> float:

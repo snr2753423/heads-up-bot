@@ -224,12 +224,72 @@ def test_preflop_index_matches_combinations_order():
     from itertools import combinations
 
     from strategy import equity
+    from strategy.score import lex_index_py
 
     hands = list(combinations(range(36), 5))
-    equity._load()
-    assert equity._INDEX[hands[0]] == 0
-    assert equity._INDEX[hands[-1]] == len(hands) - 1
+    assert lex_index_py(hands[0]) == 0
+    assert lex_index_py(hands[-1]) == len(hands) - 1
     sample = equity.preflop_equity(hands[len(hands) // 2])
     assert 0.0 <= sample <= 1.0
     if not os.path.isfile(equity.TABLE_PATH):
         assert sample == 0.5
+    else:
+        assert equity._EQUITY is not None
+        row = lex_index_py(hands[len(hands) // 2])
+        assert sample == float(equity._EQUITY[row])
+
+
+def test_batch_score_matches_evaluator():
+    import random
+
+    import numpy as np
+    from evaluator import omaha_score
+
+    from strategy.score import batch_omaha
+
+    rng = random.Random(1)
+    holes = []
+    boards = []
+    for _ in range(40):
+        deck = list(range(36))
+        rng.shuffle(deck)
+        holes.append(deck[:5])
+        boards.append(deck[5:10])
+    got = batch_omaha(np.asarray(holes), np.asarray(boards))
+    for hole, board, score in zip(holes, boards, got):
+        assert int(score) == omaha_score(hole, board)
+
+
+def test_a_bet_range_is_stronger_than_a_random_hand():
+    import numpy as np
+
+    from strategy import equity
+
+    hole = (15, 26, 30, 28, 17)
+    board = (35, 2, 20, 22, 31)
+    memory = {"spent": 0.0, "bank": 8.0, "hands_played": 0}
+    equity._RNG = np.random.default_rng(0)
+    wide = equity.postflop_equity(hole, board, memory, keep=1.0)
+    equity._RNG = np.random.default_rng(0)
+    tight = equity.postflop_equity(hole, board, memory, keep=0.25)
+    assert tight < wide
+
+
+def test_button_open_folds_about_one_hand_in_twenty():
+    import numpy as np
+
+    from strategy.equity import TABLE_PATH
+    from strategy.policy import THRESHOLDS
+
+    table = np.load(TABLE_PATH)
+    folded = float((table < THRESHOLDS["open_call"]).mean())
+    assert folded <= 0.06
+
+
+def test_low_time_bank_cuts_samples():
+    from strategy.equity import samples_for
+
+    full = samples_for({"spent": 0.0, "bank": 8.0, "hands_played": 0}, 0)
+    tight = samples_for({"spent": 7.2, "bank": 8.0, "hands_played": 400}, 0)
+    assert full > tight
+    assert tight <= 16

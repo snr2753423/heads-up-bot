@@ -45,8 +45,18 @@ AGENT_NAME = "BrownBallers"
 
 # ===== YOUR CODE HERE =====
 
+import time as _time
+
 from strategy.opponent import init_memory, note_our_action, observe_actions, observe_showdown
 from strategy.policy import choose, fallback
+
+
+def _charge(memory: dict, start: float) -> None:
+    """Add this request's own work to the half's time budget."""
+    try:
+        memory["spent"] = float(memory.get("spent") or 0.0) + (_time.perf_counter() - start)
+    except Exception:
+        return
 
 
 def new_half(config: AgentConfig, memory: dict) -> None:
@@ -59,11 +69,17 @@ def new_half(config: AgentConfig, memory: dict) -> None:
     In the tournament, each half runs in a brand-new copy of your server,
     so nothing you learn in one half carries over to the other half.
     """
+    start = _time.perf_counter()
     try:
         init_memory(memory)
+        memory["bank"] = float(config.time_bank_seconds)
     except Exception:
         memory.clear()
         memory["hands_played"] = 0
+        memory["spent"] = 0.0
+        memory["bank"] = 8.0
+    finally:
+        _charge(memory, start)
 
 
 def choose_action(obs: Observation, memory: dict) -> Action:
@@ -94,6 +110,7 @@ def choose_action(obs: Observation, memory: dict) -> Action:
     scores your hand (higher is better).
     """
 
+    start = _time.perf_counter()
     try:
         if memory.get("hand_index") != obs.hand_index:
             memory["hole"] = tuple(obs.hole_cards)
@@ -106,6 +123,8 @@ def choose_action(obs: Observation, memory: dict) -> Action:
         return action
     except Exception:
         return fallback(obs)
+    finally:
+        _charge(memory, start)
 
 
 def on_hand_end(result: HandResult, memory: dict) -> None:
@@ -119,11 +138,14 @@ def on_hand_end(result: HandResult, memory: dict) -> None:
     went_to_showdown, board (cards revealed), opp_hole (opponent's cards,
     only after a showdown, else None), winner ('me', 'opp' or 'split').
     """
+    start = _time.perf_counter()
     try:
         observe_showdown(result, memory)
         memory["hands_played"] = int(memory.get("hands_played") or 0) + 1
     except Exception:
         return
+    finally:
+        _charge(memory, start)
 
 # ===== END OF YOUR CODE =====
 

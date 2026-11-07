@@ -19,7 +19,7 @@ THRESHOLDS = {
     "preflop_raise_penalty": 0.06,
     "allin_extra": 0.05,
     "open_raise": 0.53,
-    "open_call": 0.42,
+    "open_call": 0.33,
     "bb_option_raise": 0.58,
     "min_value_bet": 0.55,
 }
@@ -49,15 +49,63 @@ def _blend(live: float, extra: float, weight: float) -> float:
     return live
 
 
+def facing_keep(obs: Observation, memory: dict) -> float:
+    """Share of hands a bet still contains.
+
+    A random hand is the default. The range tightens only after several
+    showdowns where the opponent's bets were actually strong, and it stays
+    wide when those showdowns are weak. Later streets and extra raises
+    tighten further once that evidence is there.
+    """
+    shown = int(memory.get("bet_show_n") or 0)
+    if shown < 18:
+        return 1.0
+    weak = int(memory.get("bet_show_weak") or 0) / shown
+    strong = int(memory.get("bet_show_strong") or 0) / shown
+    # Two pair and worse are common when someone bets every hand. Ignore
+    # that pattern. Tighten only for a range that keeps showing up strong.
+    if weak >= 0.20 or strong < 0.65:
+        return 1.0
+    base = {Street.FLOP: 0.78, Street.TURN: 0.62, Street.RIVER: 0.42}.get(obs.street, 1.0)
+    bets = 0
+    for action in obs.action_history:
+        if not action.is_me and action.action in (Action.RAISE_HALF, Action.RAISE_POT):
+            bets += 1
+    if bets > 1:
+        base *= 0.85 ** (bets - 1)
+    return max(0.18, min(1.0, base))
+
+
+def value_keep(memory: dict) -> float:
+    """How much of a random hand continues against a river value bet.
+
+    Stays at the whole range until called showdowns are consistently strong.
+    A station that calls with two pair or worse keeps getting thin value.
+    """
+    shown = int(memory.get("call_show_n") or 0)
+    if shown < 12:
+        return 1.0
+    weak = int(memory.get("call_show_weak") or 0) / shown
+    strong = int(memory.get("call_show_strong") or 0) / shown
+    if weak >= 0.35 or strong < 0.55:
+        return 1.0
+    return 0.45
+
+
 def equity_of(obs: Observation, memory: dict) -> float:
-    key = (obs.hand_index, int(obs.street), obs.board)
+    keep = 1.0
+    if obs.street != Street.PREFLOP and len(obs.board) >= 3 and obs.to_call > 0:
+        keep = facing_keep(obs, memory)
+    elif obs.street == Street.RIVER and obs.to_call <= 0:
+        keep = value_keep(memory)
+    key = (obs.hand_index, int(obs.street), obs.board, round(keep, 2))
     cached = memory.get("eq_cache")
     if cached is not None and cached[0] == key:
         return cached[1]
     if obs.street == Street.PREFLOP or len(obs.board) < 3:
         equity = preflop_equity(obs.hole_cards)
     else:
-        equity = postflop_equity(obs.hole_cards, obs.board)
+        equity = postflop_equity(obs.hole_cards, obs.board, memory, keep)
     memory["eq_cache"] = (key, equity)
     return equity
 
